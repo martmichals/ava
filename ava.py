@@ -1,5 +1,10 @@
 import os
 from chat.chat import Chat
+from transformers import pipeline, set_seed
+
+def generate_response(generator, human_message):
+    generated_text = generator(human_message.text, max_length=50)[0]['generated_text']
+    return generated_text
 
 if __name__ == '__main__':
     # Parse arguments
@@ -9,8 +14,12 @@ if __name__ == '__main__':
     # No support for abbreviations, character `
     # Must be launched on linux system
 
-    # Launch chat
+    # Instantiate chat and generator
     chat = Chat()
+    generator = pipeline('text-generation', model='gpt2-xl', device=0)
+
+    # Launch chat
     os.system('clear')
     while True:
-        chat.fetch_human_chat('you')
+        while not chat.fetch_human_chat('you'): pass
+        chat.add_ai_response('ava', generate_response(generator, chat.last_human_message)) 

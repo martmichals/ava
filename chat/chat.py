@@ -14,11 +14,12 @@ class bcolors:
 
 class Message:
 
-    def __init__(self, uid: str, text: str, timestamp: datetime):
+    def __init__(self, uid: str, text: str, timestamp: datetime, human: bool):
         self.text = text
         self.text_length = len(text)
         self.uid = uid
         self.timestamp = timestamp
+        self.human = human
 
 class Chat:
     SYSTEM_ID = 'sys'
@@ -27,6 +28,11 @@ class Chat:
         self.log = []
         self.uids = set(Chat.SYSTEM_ID)
         self.longest_uid = len(Chat.SYSTEM_ID)
+
+    @property
+    def last_human_message(self):
+        for message in reversed(self.log):
+            if message.human: return message
 
     def get_prefix(self, uid: str):
         return f'{uid:>{self.longest_uid}}> '
@@ -53,26 +59,40 @@ class Chat:
 
         # Get message from the terminal
         try:
-            message = input(self.get_prefix(uid))
-            message = message.encode('ascii', 'strict').decode('ascii')
+            text = input(self.get_prefix(uid))
+            text = text.encode('ascii', 'strict').decode('ascii')
         except UnicodeEncodeError:
             self.print_warning('Please restrict your messages to ASCII characters.')
             return False
 
         # Check for commands
-        if '`' in message:
-            if message[0] != '`' or message.count('`') > 1: 
+        if '`' in text:
+            if text[0] != '`' or text.count('`') > 1: 
                 self.print_warning('To run a command, type a message with ` as the first character, followed by the command. For example: "`clear"')
-            if message[1:] not in commands:
+            if text[1:] not in commands:
                 self.print_warning(f'Invalid command. Valid commands: {list(commands.keys())}.')
-            commands[message[1:]](message[1:])
+            commands[text[1:]](text[1:])
             return False
 
         # Append the message to the log
-        self.log.append(Message(uid, message, datetime.now()))
+        self.log.append(Message(uid, text, datetime.now(), True))
         return True
+
+    def add_ai_response(self, uid: str, text: str):
+        # Update the UID data structures
+        if uid not in self.uids:
+            self.uids.add(uid)
+            self.longest_uid = max(self.longest_uid, len(uid))
+
+        # Print out the message
+        print(f'{self.get_prefix(uid)}{text}')
+
+        # Add message to the log
+        self.log.append(Message(uid, text, datetime.now(), False))
 
     def save(self, filepath: str):
         # Save the chat as a JSON file
         raise NotImplementedError
+
+    # TODO: Add up arrow support to grab the last answer typed
 
